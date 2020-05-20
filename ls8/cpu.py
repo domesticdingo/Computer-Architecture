@@ -8,32 +8,31 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.ir = 0
+        self.halted = False
         self.instruction = {
             0b00000001: self.HLT,
             0b10000010: self.LDI,
-            0b01000111: self.PRN
+            0b01000111: self.PRN,
+            0b10100010: self.MUL
         }
 
-    def load(self):
-        """Load a program into memory."""
-
+    def load(self, program = []):
+        instructions = []
         address = 0
 
-        # For now, we've just hardcoded a program:
+        for line in program:
+            line = line.strip()
+            instruction = line.split('#')[0]
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+            if instruction == '': continue
+            instructions.append(int(instruction, 2))
+
+        if not len(instructions): self.halted = True
 
         for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+            for instruction in instructions:
+                self.ram[address] = instruction
+                address += 1
 
     def ram_read(self, MAR): #memory address register
         return self.ram[MAR]
@@ -46,7 +45,10 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -70,20 +72,26 @@ class CPU:
 
         print()
 
+    def LDI(self):
+        self.reg[self.ram_read(self.pc+1)] = self.ram_read(self.pc+2)
+        self.pc += 3
+
+    def PRN(self):
+        print(self.reg[self.ram_read(self.pc+1)])
+        self.pc += 2
+
+    def HLT(self):
+        self.halted = True
+        self.pc += 1
+
+    def MUL(self):
+        reg_a = self.ram_read(self.pc+1)
+        reg_b = self.ram_read(self.pc+2)
+        self.alu('MUL', reg_a, reg_b)
+        self.pc += 3
+
     def run(self):
-        halted = False
-        while not halted:
-            IR = self.instruction[self.ram_read(self.pc)]
-            op1 = self.ram_read(self.pc + 1)
-            op2 = self.ram_read(self.pc + 2)
-
-            if IR == 'LDI':
-                self.reg[op1] = op2
-                self.pc += 3
-
-            elif IR == 'PRN':
-                print(self.reg[op1])
-                self.pc += 2
-            elif IR == 'HLT':
-                halted = True
-                self.pc += 1
+        while not self.halted:
+            # self.trace()
+            IR = self.ram_read(self.pc)
+            self.instruction[IR]()

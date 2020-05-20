@@ -3,9 +3,13 @@
 """Main."""
 
 import sys
-from cpu import *
+import os
+from cpu import CPU
 
-cpu = CPU()
+path = os.getcwd()
+print(path)
 
-cpu.load()
-cpu.run()
+with open('./ls8/examples/mult.ls8') as program:
+    cpu = CPU()
+    cpu.load(program)
+    cpu.run()
