@@ -1,6 +1,6 @@
 """CPU functionality."""
 
-import sys
+import sys, re
 
 class CPU:
     def __init__(self):
@@ -8,31 +8,31 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.ir = 0
+        self.sp = 7
+        self.reg[self.sp] = 0xF4
         self.halted = False
         self.instruction = {
-            0b00000001: self.HLT,
-            0b10000010: self.LDI,
-            0b01000111: self.PRN,
-            0b10100010: self.MUL
+            0x01: self.HLT,
+            0x82: self.LDI,
+            0x47: self.PRN,
+            0xA2: self.MUL,
+            0x45: self.PUSH,
+            0x46: self.POP,
+            0x50: self.CALL,
+            0x11: self.RET,
+            0xA0: self.ADD,
         }
 
-    def load(self, program = []):
+    def load(self, program):
         instructions = []
         address = 0
+        with open(f'examples/{program}.ls8', 'r') as punchcard:
+            for line in punchcard:
+                instruction = re.match(r'(\d+)(?=\D)', line) if re.match(r"(\d+)(?=\D)", line) else None
+                if instruction:
+                    self.ram_write(address, int(instruction[0], 2))
+                    address += 1
 
-        for line in program:
-            line = line.strip()
-            instruction = line.split('#')[0]
-
-            if instruction == '': continue
-            instructions.append(int(instruction, 2))
-
-        if not len(instructions): self.halted = True
-
-        for instruction in program:
-            for instruction in instructions:
-                self.ram[address] = instruction
-                address += 1
 
     def ram_read(self, MAR): #memory address register
         return self.ram[MAR]
@@ -84,14 +84,36 @@ class CPU:
         self.halted = True
         self.pc += 1
 
+    def ADD(self):
+        self.alu('ADD', self.ram_read(self.pc+1),self.ram_read(self.pc+2))
+        self.pc += 3
+
     def MUL(self):
         reg_a = self.ram_read(self.pc+1)
         reg_b = self.ram_read(self.pc+2)
         self.alu('MUL', reg_a, reg_b)
         self.pc += 3
 
+    def PUSH(self, MDR = None):
+        self.reg[self.sp] -= 1
+        data = MDR if MDR else self.reg[self.ram[self.pc+1]]
+        self.ram_write(self.reg[self.sp], data)
+        self.pc += 2
+
+    def POP(self):
+        self.reg[self.ram_read(self.pc+1)] = self.ram_read(self.reg[self.sp])
+        self.pc += 2
+        self.reg[self.sp] += 1
+        
+    def CALL(self):
+        self.PUSH(self.pc+2)
+        self.pc = self.reg[self.ram_read(self.pc-1)]
+
+    def RET(self):
+        self.pc = self.ram_read(self.reg[self.sp])
+        self.reg[self.sp] += 1
+        
     def run(self):
         while not self.halted:
-            # self.trace()
             IR = self.ram_read(self.pc)
             self.instruction[IR]()
