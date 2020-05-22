@@ -67,16 +67,16 @@ class CPU:
             self.reg[self.ram_read(self.reg[self.pc]+1)] += 1
         def DEC():
             self.reg[self.ram_read(self.reg[self.pc]+1)] -= 1
-        def CMP():
+        def CMP(): #If reg1 == reg2, flag sets to 01. If reg1 < reg2, flag sets to 04. If neither, flag sets to 02.
             if self.reg[self.ram_read(self.reg[self.pc]+1)] == self.reg[self.ram_read(self.reg[self.pc]+2)]: self.reg[self.fl] = 0x01
             elif self.reg[self.ram_read(self.reg[self.pc]+1)] < self.reg[self.ram_read(self.reg[self.pc]+2)]: self.reg[self.fl] = 0x04
             else: self.reg[self.fl] = 0x02
 
         #Not math
-        def JEQ(): #If equals flag is true, jump to address stored in given register
+        def JEQ(): #If equals flag is true, jump to address stored in given register. If not, pass over by advancing 2
             if self.reg[self.fl] == 0x01: self.reg[self.pc] = self.reg[self.ram_read(self.reg[self.pc]+1)]
             else: self.reg[self.pc] += 2
-        def JNE(): #If equals flag is false, jump to address stored in given register
+        def JNE(): #If equals flag is not true, jump to address stored in given register. If not, pass over by advancing 2
             if self.reg[self.fl] != 0x01: self.reg[self.pc] = self.reg[self.ram_read(self.reg[self.pc]+1)]
             else: self.reg[self.pc] += 2
 
@@ -125,7 +125,7 @@ class CPU:
         self.reg[self.pc] = self.ram_read(self.reg[self.sp])
         self.reg[self.sp] += 1
 
-    def JMP(self):
+    def JMP(self): #Jumps the pc to the address stored in the register, then advances one
         self.reg[self.pc] = self.reg[self.ram_read(self.reg[self.pc]+1)]
 
     def trace(self):
@@ -147,3 +147,4 @@ class CPU:
             IR = self.ram_read(self.reg[self.pc])
             self.instruction[IR][0]()
             self.reg[self.pc] += self.instruction[IR][1]
+            self.trace()
